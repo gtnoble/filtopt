@@ -7,7 +7,7 @@ import Load from './load.js';
 /**
  * Models a passive electrical two port network
  */
-class TwoPortNetwork {
+export class TwoPortNetwork {
     /**
      * Construct a two-port network from its ABCD matrix
      * @param {math.Matrix} abcdMatrix 
@@ -35,7 +35,6 @@ class TwoPortNetwork {
      * @returns {TwoPortNetwork}
      */
     static series(load) {
-        assert(load);
         assert(load instanceof Load);
 
         return new TwoPortNetwork((angularFrequency) => math.matrix([[1 , load.impedance(angularFrequency)], [0, 1]]));
@@ -47,7 +46,6 @@ class TwoPortNetwork {
      * @returns {TwoPortNetwork}
      */
     static shunt(load) {
-        assert(load);
         assert(load instanceof Load);
 
         return new TwoPortNetwork((angularFrequency) => math.matrix([[1, 0], [load.admittance(angularFrequency), 1]]));

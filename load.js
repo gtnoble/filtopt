@@ -20,7 +20,7 @@ const reciprocal = (value) => math.divide(1, value)
 /**
  * Models a passive electrical load
  */
-class Load {
+export class Load {
     /**
      * Constructs a passive electrical load
      * @param {Impedance} impedance 
