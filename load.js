@@ -33,7 +33,7 @@ class Load {
     }
 
     impedance(angularFrequency) {
-        assert(angularFrequency);
+        assert(angularFrequency >= 0);
 
         return this.getImpedance(angularFrequency)
     }
@@ -43,7 +43,7 @@ class Load {
      * @returns {Admittance}
      */
     admittance(angularFrequency) {
-        assert(angularFrequency);
+        assert(angularFrequency >= 0);
 
         return reciprocal(this.getImpedance(angularFrequency));
     }

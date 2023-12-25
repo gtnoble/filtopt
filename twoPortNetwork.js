@@ -24,7 +24,7 @@ class TwoPortNetwork {
      * @returns {number}
      */
     voltageGain(angularFrequency) {
-        assert(angularFrequency);
+        assert(angularFrequency >= 0);
 
         return math.divide(1, this.abcdMatrix(angularFrequency).get([0, 0]));
     }

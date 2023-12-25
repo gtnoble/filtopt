@@ -1,7 +1,5 @@
 import { strict as assert } from 'node:assert';
 
-import integrateAdaptiveSimpson from 'integrate-adaptive-simpson';
-
 import TwoPortNetwork from './twoPortNetwork.js';
 
 /**
@@ -84,8 +82,8 @@ class ComponentValue {
      * @returns {Array<number>}
      */
     static feasiblePreferredValues(minValue, maxValue) {
-        assert(minValue);
-        assert(maxValue);
+        assert(minValue > 0);
+        assert(maxValue >= minValue);
 
         const minSeries = Math.floor(Math.log10(minValue));
         const maxSeries = Math.ceil(Math.log10(maxValue));
@@ -110,9 +108,9 @@ class ComponentValue {
      * @returns {ComponentValue}
      */
     static initializeComponent(initialValue, maxValue, minValue, allowZero = false, allowInfinite = false) {
-        assert(initialValue);
-        assert(maxValue);
-        assert(minValue);
+        assert(initialValue >= 0);
+        assert(maxValue >= 0);
+        assert(minValue <= maxValue);
 
         const feasibleValues = ComponentValue.feasiblePreferredValues(minValue, maxValue);
         if (allowZero)
@@ -123,6 +121,16 @@ class ComponentValue {
         const valueIndex = ComponentValue.nearestNeighborIndex(initialValue, feasibleValues);
 
         return new ComponentValue(feasibleValues, valueIndex);
+    }
+
+    static randomizeComponent(maxValue, minValue, allowZero = false, allowInfinite = true) {
+        return ComponentValue.initializeComponent(
+            Math.random() * (maxValue - minValue) + minValue, 
+            maxValue, 
+            minValue, 
+            allowZero, 
+            allowInfinite
+        );
     }
 }
 
@@ -229,7 +237,7 @@ class Filter {
 
 /**
  * @callback ObjectiveFunction
- * @param {Filter} filter - Filter to evaluate fitness of
+ * @param {TwoPortNetwork} filter - Network to evaluate fitness of
  * @returns {number}
  */
 
@@ -251,10 +259,10 @@ function optimizeFilter(initialFilter, objectiveFunction, initialTemperature, co
 
     let filter = initialFilter;
     let temperature = initialTemperature;
-    let objectiveValue = objectiveFunction(initialFilter);
+    let objectiveValue = objectiveFunction(filter.network);
     for (let i = 0; i < iterations; i++) {
         const candidateFilter = filter.update();
-        const candidateObjectiveValue = objectiveFunction(candidateFilter);
+        const candidateObjectiveValue = objectiveFunction(candidateFilter.network);
         if (Math.random() <= Math.pow(2, - (candidateObjectiveValue - objectiveValue) / temperature)) {
             filter = candidateFilter;
             objectiveValue = candidateObjectiveValue;
@@ -271,37 +279,48 @@ function optimizeFilter(initialFilter, objectiveFunction, initialTemperature, co
  * @param {number} maxGainDeviation 
  * @returns {number}
  */
-function makeMatchingNetworkObjective(minFrequency, maxFrequency, maxGainDeviation, integrationTolerance = 0.01, maxIter = 20) {
+function makeMatchingNetworkObjective(minFrequency, maxFrequency, maxGainDeviation, nTestSamples = 20) {
     assert(minFrequency);
     assert(maxFrequency);
     assert(maxGainDeviation);
 
-    const maxGainVariance = Math.pow(maxGainDeviation * 2, 2);
+    const maxAngularFrequency = maxFrequency * 2 * Math.PI;
+    const minAngularFrequency = minFrequency * 2 * Math.PI;
+    const angularFrequencyRange = (maxAngularFrequency - minAngularFrequency)
 
-    return (filter) => {
-        assert(filter)
+    return (network) => {
+        assert(network instanceof TwoPortNetwork)
+        
+        let currentMinGain
+        let currentMaxGain
+        let gainSum = 0
+        for (
+            let angularFrequency = minAngularFrequency; 
+            angularFrequency < maxAngularFrequency; 
+            angularFrequency += angularFrequencyRange / nTestSamples
+        ) {
+            const sample = network.voltageGain(angularFrequency).abs();
+            if (currentMinGain === undefined || sample < currentMinGain) 
+                currentMinGain = sample;
+            if (currentMaxGain === undefined || sample > currentMaxGain)
+                currentMaxGain = sample;
+            gainSum += sample
+        }
 
-        const network = filter.network
-        const meanGain = integrateAdaptiveSimpson(
-            (angularFrequency) => network.voltageGain(angularFrequency).abs(), 
-            minFrequency / (2 * Math.PI), 
-            maxFrequency / (2 * Math.PI), 
-            integrationTolerance, 
-            maxIter
-        ) / (maxFrequency - minFrequency);
+        const meanGain = gainSum / nTestSamples;
+        const gainDeviation = 10 * Math.log10(currentMaxGain) - 10 * Math.log10(currentMinGain);
 
-        const gainVariance = integrateAdaptiveSimpson(
-            (angularFrequency) => Math.pow(network.voltageGain(angularFrequency).abs() - meanGain, 2), 
-            minFrequency / (2 * Math.PI), 
-            maxFrequency / (2 * Math.PI), 
-            integrationTolerance, 
-            maxIter
-        ) / (maxFrequency - minFrequency);
 
-        if (gainVariance > maxGainVariance)
+        if (gainDeviation > maxGainDeviation)
             return Infinity;
 
-        return -meanGain;
+        if (meanGain === 0)
+            return Infinity;
+
+        const meanGainDb = 10 * Math.log10(meanGain)
+        console.log(`${meanGainDb} ${gainDeviation}`)
+
+        return -10 * Math.log10(meanGain);
     }
 }
 
