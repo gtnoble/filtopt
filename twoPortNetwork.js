@@ -1,8 +1,58 @@
 import { strict as assert } from 'node:assert';
 
-import * as math from 'mathjs';
+import Complex from 'complex.js';
 
 import Load from './load.js';
+
+const ONE = Complex.ONE;
+
+function reciprocal(x) {
+    return ONE.div(x)
+}
+
+class TwoPortMatrix {
+    constructor(rows) {
+        assert(rows instanceof Array)
+        assert(rows.length === 2)
+
+        this.rows = rows.map((row) => row.map((element) => new Complex(element)));
+    }
+
+    set(row, column, value) {
+        assert(row < 2);
+        assert(column < 2);
+
+        this.rows[row][column] = value;
+    }
+
+    get(row, column) {
+        assert(row < 2);
+        assert(column < 2);
+
+        return this.rows[row][column];
+    }
+
+    matrixMuliply(multiplier) {
+        assert(multiplier instanceof TwoPortMatrix)
+        const result = TwoPortMatrix.zeros();
+
+        for (var i = 0; i < 2; i++) {
+            for (var j = 0; j < 2; j++) {
+                for (var k = 0; k < 2; k++) {
+                    const updatedResult = result.get(i, j).add(this.get(i, k).mul(multiplier.get(k, j)));
+                    result.set(i, j, updatedResult);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    static zeros() {
+        return new TwoPortMatrix([[0, 0], [0, 0]]);
+    }
+
+}
 
 /**
  * Models a passive electrical two port network
@@ -10,7 +60,7 @@ import Load from './load.js';
 export class TwoPortNetwork {
     /**
      * Construct a two-port network from its ABCD matrix
-     * @param {math.Matrix} abcdMatrix 
+     * @param {function(number): TwoPortMatrix} abcdMatrix 
      */
     constructor(abcdMatrix) {
         assert(abcdMatrix);
@@ -20,13 +70,13 @@ export class TwoPortNetwork {
 
     /**
      * Gets the voltage gain of the network at a given angular frequency
-     * @param {math.Complex} angularFrequency - Frequency at which to evaluate the voltage gain
-     * @returns {number}
+     * @param {Complex} angularFrequency - Frequency at which to evaluate the voltage gain
+     * @returns {Complex}
      */
     voltageGain(angularFrequency) {
         assert(angularFrequency >= 0);
 
-        return math.divide(1, this.abcdMatrix(angularFrequency).get([0, 0]));
+        return reciprocal(this.abcdMatrix(angularFrequency).get(0, 0));
     }
 
     /**
@@ -37,7 +87,7 @@ export class TwoPortNetwork {
     static series(load) {
         assert(load instanceof Load);
 
-        return new TwoPortNetwork((angularFrequency) => math.matrix([[1 , load.impedance(angularFrequency)], [0, 1]]));
+        return new TwoPortNetwork((angularFrequency) => new TwoPortMatrix([[1, load.impedance(angularFrequency)], [0, 1]]));
     }
 
     /**
@@ -48,7 +98,7 @@ export class TwoPortNetwork {
     static shunt(load) {
         assert(load instanceof Load);
 
-        return new TwoPortNetwork((angularFrequency) => math.matrix([[1, 0], [load.admittance(angularFrequency), 1]]));
+        return new TwoPortNetwork((angularFrequency) => new TwoPortMatrix([[1, 0], [load.admittance(angularFrequency), 1]]));
     }
 
     /**
@@ -64,7 +114,7 @@ export class TwoPortNetwork {
         assert(shuntLoad instanceof Load);
 
         return TwoPortNetwork.cascade(
-            TwoPortNetwork.series(seriesLoad), 
+            TwoPortNetwork.series(seriesLoad),
             TwoPortNetwork.shunt(shuntLoad)
         );
     }
@@ -84,11 +134,11 @@ export class TwoPortNetwork {
         assert(shuntParallelCapacitance >= 0);
         assert(shuntParallelInductance >= 0);
 
-        const lCParallelLoad = 
+        const lCParallelLoad =
             (inductance, capacitance) => Load.parallel(Load.capacitor(capacitance), Load.inductor(inductance))
 
         return TwoPortNetwork.lSection(
-            lCParallelLoad(seriesParallelInductance, seriesParallelCapacitance), 
+            lCParallelLoad(seriesParallelInductance, seriesParallelCapacitance),
             lCParallelLoad(shuntParallelInductance, shuntParallelCapacitance)
         );
     }
@@ -102,7 +152,7 @@ export class TwoPortNetwork {
         assert(turnsRatio);
         assert(turnsRatio > 0);
 
-        return new TwoPortNetwork(() => math.matrix([[turnsRatio, 0], [0, 1 / turnsRatio]]));
+        return new TwoPortNetwork(() => new TwoPortMatrix([[turnsRatio, 0], [0, 1 / turnsRatio]]));
     }
 
     /**
@@ -126,11 +176,11 @@ export class TwoPortNetwork {
             assert(nextStage instanceof TwoPortNetwork);
 
             return new TwoPortNetwork(
-            (angularFrequency) => math.multiply(combinedStages.abcdMatrix(angularFrequency), nextStage.abcdMatrix(angularFrequency)))
+                (angularFrequency) => combinedStages.abcdMatrix(angularFrequency).matrixMuliply(nextStage.abcdMatrix(angularFrequency)))
         }
 
         return stages.reduce(
-            combineStages, 
+            combineStages,
             TwoPortNetwork.identity()
         );
     }

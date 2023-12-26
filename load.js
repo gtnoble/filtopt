@@ -1,20 +1,20 @@
 import { strict as assert } from 'node:assert';
 
-import * as math from 'mathjs';
+import Complex from 'complex.js';
 
-const reciprocal = (value) => math.divide(1, value)
+const reciprocal = (value) => Complex.ONE.div(value)
 
 /**
  * Calculates the impedance of the load at a given frequency
  * @callback Impedance
  * @param {number} angularFrequency - Complex angular frequency at which to calculate the impedance value
- * @returns {math.Complex} - Impedance value at a given frequency
+ * @returns {Complex} - Impedance value at a given frequency
  */
 
 /**
  * @callback Admittance
  * @param {number} angularFrequency - Complex angular frequency at which to calculate the admittance value
- * @returns {math.Complex} - Admittance value at a given frequency
+ * @returns {Complex} - Admittance value at a given frequency
  */
 
 /**
@@ -58,8 +58,7 @@ export class Load {
 
         return new Load(
             (angularFrequency) => 
-                reciprocal(
-                    math.prod(math.i, angularFrequency, capacitance)));
+                reciprocal(Complex.I.mul(angularFrequency).mul(capacitance)));
     }
 
     /**
@@ -70,7 +69,7 @@ export class Load {
     static inductor(inductance) {
         assert(inductance >= 0);
 
-        return new Load((angularFrequency) => math.prod(math.i, angularFrequency, inductance));
+        return new Load((angularFrequency) => Complex.I.mul(angularFrequency).mul(inductance));
     }
 
     /**
@@ -81,7 +80,7 @@ export class Load {
     static resistor(resistance) {
         assert(resistance >= 0);
 
-        return new Load(() => math.complex(resistance, 0));
+        return new Load(() => new Complex(resistance, 0));
     }
 
     /**
@@ -93,10 +92,10 @@ export class Load {
         assert(loads);
 
         return new Load((angularFrequency) => {
-            let evaluatedAdmittance = 0;
+            let evaluatedAdmittance = Complex.ZERO;
             for (const load of loads) {
                 assert(load instanceof Load)
-                evaluatedAdmittance = math.add(evaluatedAdmittance, load.admittance(angularFrequency));
+                evaluatedAdmittance = evaluatedAdmittance.add(load.admittance(angularFrequency));
             }
             return reciprocal(evaluatedAdmittance);
         })
@@ -111,10 +110,10 @@ export class Load {
         assert(loads)
 
         return new Load((angularFrequency) => {
-            let combinedImpedance = 0;
+            let combinedImpedance = Complex.ZERO;
             for (const load of loads) {
                 assert(load instanceof Load);
-                combinedImpedance = math.add(combinedImpedance, load.impedance(angularFrequency));
+                combinedImpedance = combinedImpedance.add(load.impedance(angularFrequency));
             }
             return combinedImpedance;
         })

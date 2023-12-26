@@ -1,6 +1,6 @@
 import { test } from 'tap';
 
-import { ComponentValue } from './optimize.js';
+import { ComponentValue } from './component.js';
 
 test("ComponentValue", (t) => {
     t.test('Test ComponentValue - Initialization', (t) => {

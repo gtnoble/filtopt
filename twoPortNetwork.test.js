@@ -11,7 +11,8 @@ test('Test TwoPortNetwork - Series Connection', (t) => {
     const angularFrequency = 2;
     const voltageGain = seriesNetwork.voltageGain(angularFrequency);
 
-    t.equal(voltageGain, 1);
+    t.equal(voltageGain.re, 1);
+    t.equal(voltageGain.im, 0);
 
     t.end();
 });
@@ -24,7 +25,8 @@ test('Test TwoPortNetwork - Shunt Connection', (t) => {
     const voltageGain = shuntNetwork.voltageGain(angularFrequency);
 
     // Replace with your expected result
-    t.equal(voltageGain, 1);
+    t.equal(voltageGain.re, 1);
+    t.equal(voltageGain.im, 0);
 
     t.end();
 });
@@ -50,7 +52,8 @@ test('Test TwoPortNetwork - Identity', (t) => {
     const identityNetwork = TwoPortNetwork.identity();
 
     const voltageGain = identityNetwork.voltageGain(69);
-    t.equal(voltageGain, 1);
+    t.equal(voltageGain.re, 1);
+    t.equal(voltageGain.im, 0);
 
     t.end();
 });
@@ -59,7 +62,8 @@ test('Test TwoPortNetwork - Transformer', (t) => {
     const identityNetwork = TwoPortNetwork.transformer(2);
 
     const voltageGain = identityNetwork.voltageGain(69);
-    t.equal(voltageGain, 0.5);
+    t.equal(voltageGain.re, 0.5);
+    t.equal(voltageGain.im, 0);
 
     t.end();
 });

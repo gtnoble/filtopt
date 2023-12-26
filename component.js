@@ -7,24 +7,10 @@ import Load from './load.js';
  */
 const E24_VALUES = [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1];
 
-export class ComponentValue {
-    constructor(value) {
-        this._value = value;
-    }
-
-    get value() {
-        return this._value;
-    }
-
-    update() {
-        return new ComponentValue(this.value);
-    }
-}
-
 /**
  * Manages the values of electronic components during filter optimization
  */
-export class VariableComponentValue extends ComponentValue {
+export class ComponentValue {
     /**
      * Makes a component value
      * @param {Array<number>} feasibleValues - An array of "E series" preferred numbers
@@ -33,6 +19,7 @@ export class VariableComponentValue extends ComponentValue {
     constructor(feasibleValues, valueIndex) {
         assert(feasibleValues);
         assert(feasibleValues instanceof Array);
+        assert(feasibleValues.length > 0);
         assert(valueIndex >= 0);
 
         this.feasibleValues = feasibleValues;
@@ -49,10 +36,10 @@ export class VariableComponentValue extends ComponentValue {
 
     /**
      * Creates a new component value from a randomly selected neighboring value
-     * @returns {VariableComponentValue}
+     * @returns {ComponentValue}
      */
     update() {
-        return new VariableComponentValue(this.feasibleValues, this._nextIndex());
+        return new ComponentValue(this.feasibleValues, this._nextIndex());
     }
 
     /**
@@ -60,6 +47,8 @@ export class VariableComponentValue extends ComponentValue {
      * @returns {number}
      */
     _nextIndex() {
+        if (this.feasibleValues.length === 1)
+            return 0;
         if (this.valueIndex == 0)
             return 1;
         if (this.valueIndex == this.feasibleValues.length - 1)
@@ -119,32 +108,42 @@ export class VariableComponentValue extends ComponentValue {
      * @param {number} minValue - Min feasible component value number
      * @param {boolean} allowZero - Is zero a possible component value number?
      * @param {boolean} allowInfinite - Can a component have an infinite value?
-     * @returns {VariableComponentValue}
+     * @returns {ComponentValue}
      */
     static initializeComponent(initialValue, maxValue, minValue, allowZero = false, allowInfinite = false) {
         assert(initialValue >= 0);
         assert(minValue > 0)
         assert(maxValue >= minValue);
 
-        const feasibleValues = VariableComponentValue.feasiblePreferredValues(minValue, maxValue);
+        const feasibleValues = ComponentValue.feasiblePreferredValues(minValue, maxValue);
         if (allowZero)
             feasibleValues.unshift(0);
         if (allowInfinite)
             feasibleValues.push(Infinity);
 
-        const valueIndex = VariableComponentValue.nearestNeighborIndex(initialValue, feasibleValues);
+        const valueIndex = ComponentValue.nearestNeighborIndex(initialValue, feasibleValues);
 
-        return new VariableComponentValue(feasibleValues, valueIndex);
+        return new ComponentValue(feasibleValues, valueIndex);
     }
 
     static randomizeComponent(maxValue, minValue, allowZero = false, allowInfinite = false) {
-        return VariableComponentValue.initializeComponent(
+        return ComponentValue.initializeComponent(
             Math.random() * (maxValue - minValue) + minValue, 
             maxValue, 
             minValue, 
             allowZero, 
             allowInfinite
         );
+    }
+}
+
+class StaticComponentValue extends ComponentValue {
+    constructor (value) {
+        super([value], 0)
+    }
+
+    update() {
+        return this;
     }
 }
 
@@ -161,7 +160,7 @@ export class Component {
     constructor(componentName, componentValue, makeLoad){
         this.componentName = componentName;
         assert(componentValue instanceof ComponentValue || typeof(componentValue) === "number");
-        this.componentValue = componentValue instanceof ComponentValue ? componentValue : new ComponentValue(componentValue);
+        this.componentValue = componentValue instanceof ComponentValue ? componentValue : new StaticComponentValue(componentValue)
         assert(makeLoad instanceof Function);
         this.makeLoad = makeLoad;
     }
