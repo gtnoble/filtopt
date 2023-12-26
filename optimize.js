@@ -79,11 +79,12 @@ export function makeMatchingNetworkObjective(minFrequency, maxFrequency, maxGain
         const gainDeviation = 10 * Math.log10(currentMaxGain) - 10 * Math.log10(currentMinGain);
 
 
+        const meanGainDb = 10 * Math.log10(meanGain)
+        console.log(`${meanGainDb} ${gainDeviation}`)
+
         if (gainDeviation > maxGainDeviation)
             return Infinity;
 
-        const meanGainDb = 10 * Math.log10(meanGain)
-        console.log(`${meanGainDb} ${gainDeviation}`)
 
         return -10 * Math.log10(meanGain);
     }

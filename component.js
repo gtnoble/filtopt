@@ -34,7 +34,6 @@ export class VariableComponentValue extends ComponentValue {
         assert(feasibleValues);
         assert(feasibleValues instanceof Array);
         assert(valueIndex >= 0);
-        super();
 
         this.feasibleValues = feasibleValues;
         this.valueIndex = valueIndex;
@@ -156,13 +155,13 @@ export class Component {
     /**
      * Constructs an electronic component
      * @param {string} componentName - The name of the component type, e.g. "capacitor", "inductor", etc.
-     * @param {ComponentValue} componentValue - The value of the component
+     * @param {ComponentValue || number} componentValue - The value of the component
      * @param {function(*): Load} makeLoad - Takes the component value and creates the corresponding load
      */
     constructor(componentName, componentValue, makeLoad){
         this.componentName = componentName;
-        assert(componentValue instanceof ComponentValue);
-        this.componentValue = componentValue;
+        assert(componentValue instanceof ComponentValue || typeof(componentValue) === "number");
+        this.componentValue = componentValue instanceof ComponentValue ? componentValue : new ComponentValue(componentValue);
         assert(makeLoad instanceof Function);
         this.makeLoad = makeLoad;
     }

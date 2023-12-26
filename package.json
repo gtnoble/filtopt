@@ -9,7 +9,6 @@
   "author": "Garret Noble",
   "license": "MIT",
   "dependencies": {
-    "integrate-adaptive-simpson": "^1.1.1",
     "integrate-simpson": "^1.0.4",
     "mathjs": "^12.2.1",
     "nodeplotlib": "^1.1.2",
